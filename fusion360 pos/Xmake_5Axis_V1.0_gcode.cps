@@ -1,3 +1,4 @@
+/**********************************************************************************************************/
 /**
   Copyright (C) 2012-2024 by Autodesk, Inc.
   All rights reserved.
@@ -9,6 +10,7 @@
 
   FORKID {61167F95-13C8-423D-B5C7-A64F747AAA5E}
 */
+/**********************************************************************************************************/
 description = "5AXISMAKER";
 vendor = "5AXISWORKS";
 vendorUrl = "http://www.5axismaker.com";
@@ -27,7 +29,7 @@ minimumCircularSweep = toRad(0.01);
 maximumCircularSweep = toRad(180);
 allowHelicalMoves = true;
 allowedCircularPlanes = undefined; // allow any circular motion
-
+/**********************************************************************************************************/
 // user-defined properties
 properties = {
   writeMachine: {
@@ -93,7 +95,7 @@ properties = {
       { title: "No", id: "false" },
       { title: "Only on tool change", id: "toolChange" }
     ],
-    value: "false",
+    value: "true",
     scope: "post"
   },
   sequenceNumberStart: {
@@ -109,7 +111,7 @@ properties = {
     description: "The amount by which the sequence number is incremented by in each block.",
     group: "formats",
     type: "integer",
-    value: 5,
+    value: 1,
     scope: "post"
   },
   optionalStop: {
@@ -174,7 +176,6 @@ properties = {
     scope: "post"
   }
 };
-
 // wcs definiton
 wcsDefinitions = {
   useZeroOffset: false,
@@ -215,7 +216,6 @@ var rpmFormat = createFormat({ decimals: 0 });
 var secFormat = createFormat({ decimals: 3, forceDecimal: true }); // seconds - range 0.001-99999.999
 var milliFormat = createFormat({ decimals: 0 }); // milliseconds // range 1-9999
 var taperFormat = createFormat({ decimals: 1, scale: DEG });
-
 var xOutput = createVariable({ prefix: "X" }, xyzFormat);
 var yOutput = createVariable({ prefix: "Y" }, xyzFormat);
 var zOutput = createVariable({ onchange: function () { retracted = false; }, prefix: "Z" }, xyzFormat);
@@ -226,12 +226,10 @@ var feedOutput = createVariable({ prefix: "F" }, feedFormat);
 var inverseTimeOutput = createVariable({ prefix: "F", force: true }, inverseFormat);
 var sOutput = createVariable({ prefix: "S", force: true }, rpmFormat);
 var pOutput = createVariable({}, pFormat);
-
 // circular output
 var iOutput = createReferenceVariable({ prefix: "I", force: true }, xyzFormat);
 var jOutput = createReferenceVariable({ prefix: "J", force: true }, xyzFormat);
 var kOutput = createReferenceVariable({ prefix: "K", force: true }, xyzFormat);
-
 var gMotionModal = createModal({}, gFormat); // modal group 1 // G0-G3, ...
 var gPlaneModal = createModal({ onchange: function () { gMotionModal.reset(); } }, gFormat); // modal group 2 // G17-19
 var gAbsIncModal = createModal({}, gFormat); // modal group 3 // G90-91
@@ -239,22 +237,20 @@ var gFeedModeModal = createModal({}, gFormat); // modal group 5 // G93-94
 var gUnitModal = createModal({}, gFormat); // modal group 6 // G20-21
 var gCycleModal = createModal({}, gFormat); // modal group 9 // G81, ...
 var gRetractModal = createModal({}, gFormat); // modal group 10 // G98-99
-
 // fixed settings
-var pivotDistance = toPreciseUnit(95, MM); // distance to pivot point along B-axis
+var pivotDistance = toPreciseUnit(135, MM); // distance to pivot point along B-axis
 var cAxisOffset = toPreciseUnit(0, MM); // distance from B-axis CL to C-axis CL
 var headOffset = pivotDistance; // can have the tool length added to it
 var safeRetractFeed = (unit == IN) ? 40 : 1000;
 var safePlungeFeed = (unit == IN) ? 25 : 625;
 var WARNING_WORK_OFFSET = 0;
-
 // collected state
 var sequenceNumber;
 var forceSpindleSpeed = false;
 var currentWorkOffset;
 var previousABC;
 var retracted = false; // specifies that the tool has been retracted to the safe plane
-/***************************************************************************************************************************************************/
+/**********************************************************************************************************/
 // CNC 后处理器中用来生成并写入 G-code 指令
 function writeBlock() {
   var text = formatWords(arguments);
@@ -268,7 +264,7 @@ function writeBlock() {
     writeWords(arguments);
   }
 }
-/***************************************************************************************************************************************************/
+/**********************************************************************************************************/
 // 负责生成与当前刀具相关的信息块（Tool Block）
 function writeToolBlock() {
   var show = getProperty("showSequenceNumbers");
@@ -276,12 +272,12 @@ function writeToolBlock() {
   writeBlock(arguments);
   setProperty("showSequenceNumbers", show);
 }
-/***************************************************************************************************************************************************/
+/**********************************************************************************************************/
 // 函数用于将指定的文本（text）作为注释写入 G-code 文件
 function writeComment(text) {
   writeln("(" + filterText(String(text).toUpperCase(), permittedCommentChars) + ")");
 }
-/***************************************************************************************************************************************************/
+/**********************************************************************************************************/
 function onOpen() {
   // set the default feed mode
   if (getProperty("useRadius")) {     // 限定扫琼角度最大值
@@ -411,10 +407,12 @@ function onOpen() {
       break;
   }
   // 启动段
-  writeBlock(gFormat.format(40));       // 取消刀具半径补偿
-  writeBlock(gFormat.format(49));       // 取消长度补偿
-  writeBlock(gCycleModal.format(80));   // 取消固定循环
-  writeBlock(gAbsIncModal.format(90));  // 绝对坐标
+  writeBlock(gFormat.format(17));       
+  writeBlock(gFormat.format(21));       
+  writeBlock(gFormat.format(94));       
+  writeBlock(gFormat.format(90));       
+  writeBlock(gFormat.format(64));       
+  writeBlock(gFormat.format(54));       
 }
 /**********************************************************************************************************/
 // 处理注释信息
@@ -546,7 +544,6 @@ function onSection() {
   var insertToolCall = isFirstSection() ||
     currentSection.getForceToolChange && currentSection.getForceToolChange() ||
     (tool.number != getPreviousSection().getTool().number);
-
   retracted = false;
   var newWorkOffset = isFirstSection() ||
     (getPreviousSection().workOffset != currentSection.workOffset); // work offset changes
@@ -760,7 +757,6 @@ function onCyclePoint(_x, _y, _z) {
   x = cyclePosition.x;
   y = cyclePosition.y;
   z = cyclePosition.z;
-
   var plane = gPlaneModal.getCurrent();
   var localZOutput = zOutput;
   if (isSameDirection(currentSection.workPlane.forward, new Vector(0, 0, 1))) {
@@ -789,15 +785,11 @@ function onCyclePoint(_x, _y, _z) {
     return;
   }
   var planeCode = gPlaneModal.format(plane);
-
   if (isFirstCyclePoint()) {
     repositionToCycleClearance(cycle, _x, _y, _z);
-
     // return to initial Z which is clearance plane and set absolute mode
-
     var F = cycle.feedrate;
     var P = !cycle.dwell ? 0 : cycle.dwell; // in seconds
-
     switch (cycleType) {
       case "drilling":
         writeBlock(
@@ -1038,10 +1030,11 @@ function getOptimizedHeads(_x, _y, _z, _a, _b, _c) {
   var x;
   var y;
   var z;
-  if (true) {
+  if (false) {
     // adjust point for B-axis offset
     var displacement = machineConfiguration.getDirection(new Vector(_a, _b, _c));
-    displacement.multiply(headOffset); // control will compensate for tool length
+    displacement.multiply(135); // control will compensate for tool length
+    // displacement.multiply(headOffset); // control will compensate for tool length
     if (!getProperty("setupAtCenterOfCAxis")) {
       displacement = Vector.diff(displacement, new Vector(0, 0, headOffset));
     }
@@ -1817,7 +1810,6 @@ function writeRetract() {
   }
 }
 /**********************************************************************************************************/
-
 function onClose() {
   writeln("");
   if (true) {
